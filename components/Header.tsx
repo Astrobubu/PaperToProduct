@@ -4,9 +4,9 @@ import Link from "next/link";
 
 export default function Header() {
   return (
-    <header className="sticky top-0 z-50 bg-background/80 backdrop-blur-md">
+    <header className="sticky top-0 z-50 bg-transparent backdrop-blur-none">
       <div className="max-w-3xl mx-auto px-4 py-3 flex items-center justify-between">
-        <Link href="/search" className="flex items-center gap-2">
+        <Link href="/" className="flex items-center gap-2">
           <div className="w-8 h-8 bg-secondary rounded-lg flex items-center justify-center">
             <svg
               width="16"
