@@ -5,11 +5,11 @@ import Link from "next/link";
 import { Menu, X } from "lucide-react";
 
 const NAV_LINKS = [
+  { label: "Papers", href: "/search" },
+  { label: "Patents", href: "/patents" },
   { label: "Features", href: "#features" },
   { label: "How It Works", href: "#how-it-works" },
   { label: "Pricing", href: "#pricing" },
-  { label: "Roadmap", href: "#roadmap" },
-  { label: "Investment", href: "#investment" },
 ];
 
 export default function LandingNavbar() {

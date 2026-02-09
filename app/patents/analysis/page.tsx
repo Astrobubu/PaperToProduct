@@ -3,53 +3,52 @@
 import { Suspense, useEffect, useState, useCallback, useRef } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Header from "@/components/Header";
-import PaperExtractionCard from "@/components/PaperExtraction";
-import ComparisonTable from "@/components/ComparisonTable";
+import PatentExtractionCard from "@/components/PatentExtractionCard";
 import ExtractionProgress, { ProgressItem } from "@/components/ExtractionProgress";
-import { PaperExtraction, Domain } from "@/types";
+import { PatentExtraction, Domain } from "@/types";
 
-function AnalysisContent() {
+function PatentAnalysisContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const ids = searchParams.get("ids") || "";
   const domain = (searchParams.get("domain") || "energy_storage") as Domain;
   const query = searchParams.get("q") || "";
 
-  const paperIds = ids.split(",").filter(Boolean);
+  const patentIds = ids.split(",").filter(Boolean);
 
-  const [extractions, setExtractions] = useState<PaperExtraction[]>([]);
+  const [extractions, setExtractions] = useState<PatentExtraction[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [progressItems, setProgressItems] = useState<ProgressItem[]>([]);
   const hasRun = useRef(false);
 
-  // Load paper titles from sessionStorage
+  // Load patent titles from sessionStorage
   useEffect(() => {
     const stored = sessionStorage.getItem("selectedItems");
     if (stored) {
       try {
         const items: { id: string; title: string }[] = JSON.parse(stored);
         setProgressItems(
-          paperIds.map((id) => ({
+          patentIds.map((id) => ({
             id,
-            title: items.find((i) => i.id === id)?.title || `Paper ${id.slice(0, 8)}...`,
+            title: items.find((i) => i.id === id)?.title || `Patent ${id.slice(0, 8)}...`,
             status: "waiting" as const,
           }))
         );
       } catch {
         setProgressItems(
-          paperIds.map((id, i) => ({
+          patentIds.map((id, i) => ({
             id,
-            title: `Paper ${i + 1}`,
+            title: `Patent ${i + 1}`,
             status: "waiting" as const,
           }))
         );
       }
     } else {
       setProgressItems(
-        paperIds.map((id, i) => ({
+        patentIds.map((id, i) => ({
           id,
-          title: `Paper ${i + 1}`,
+          title: `Patent ${i + 1}`,
           status: "waiting" as const,
         }))
       );
@@ -58,19 +57,18 @@ function AnalysisContent() {
   }, [ids]);
 
   const runExtraction = useCallback(async () => {
-    if (paperIds.length === 0 || hasRun.current) return;
+    if (patentIds.length === 0 || hasRun.current) return;
     hasRun.current = true;
     setLoading(true);
     setError(null);
-    const results: PaperExtraction[] = [];
+    const results: PatentExtraction[] = [];
 
-    for (let i = 0; i < paperIds.length; i++) {
-      const paperId = paperIds[i];
+    for (let i = 0; i < patentIds.length; i++) {
+      const patentId = patentIds[i];
 
-      // Mark current as extracting
       setProgressItems((prev) =>
         prev.map((item) =>
-          item.id === paperId ? { ...item, status: "extracting" } : item
+          item.id === patentId ? { ...item, status: "extracting" } : item
         )
       );
 
@@ -79,7 +77,7 @@ function AnalysisContent() {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            paperIds: [paperId],
+            patentIds: [patentId],
             domain,
             searchQuery: query,
           }),
@@ -87,39 +85,37 @@ function AnalysisContent() {
 
         if (!res.ok) throw new Error("Extraction failed");
         const data = await res.json();
-        const extraction = data.extractions?.[0];
+        const extraction = data.patentExtractions?.[0];
 
         if (extraction) {
           results.push(extraction);
-          // Update title from extraction result if we had a fallback
           setProgressItems((prev) =>
             prev.map((item) =>
-              item.id === paperId
-                ? { ...item, status: "done", title: extraction.paperTitle || item.title }
+              item.id === patentId
+                ? { ...item, status: "done", title: extraction.patentTitle || item.title }
                 : item
             )
           );
         } else {
           setProgressItems((prev) =>
             prev.map((item) =>
-              item.id === paperId ? { ...item, status: "error" } : item
+              item.id === patentId ? { ...item, status: "error" } : item
             )
           );
         }
       } catch {
         setProgressItems((prev) =>
           prev.map((item) =>
-            item.id === paperId ? { ...item, status: "error" } : item
+            item.id === patentId ? { ...item, status: "error" } : item
           )
         );
       }
 
-      // Update extractions as they come in
       setExtractions([...results]);
     }
 
     if (results.length === 0) {
-      setError("Failed to analyze papers. Please try again.");
+      setError("Failed to analyze patents. Please try again.");
     }
     setLoading(false);
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -132,7 +128,7 @@ function AnalysisContent() {
   }, [progressItems, runExtraction]);
 
   if (!ids) {
-    router.push("/search");
+    router.push("/patents");
     return null;
   }
 
@@ -150,17 +146,17 @@ function AnalysisContent() {
           Back to results
         </button>
         <h1 className="font-heading font-bold text-xl text-t-primary">
-          Analysis of {paperIds.length} paper{paperIds.length !== 1 ? "s" : ""}
+          Analysis of {patentIds.length} patent{patentIds.length !== 1 ? "s" : ""}
         </h1>
         <p className="text-t-muted text-sm mt-1">
-          Extracted from paper abstracts. Only data explicitly reported by authors is shown.
+          Extracted from patent abstracts. Only claims explicitly stated are shown.
         </p>
       </div>
 
       {/* Loading with real progress */}
       {loading && progressItems.length > 0 && (
         <div className="py-8">
-          <ExtractionProgress items={progressItems} phase="Extracting papers" />
+          <ExtractionProgress items={progressItems} phase="Extracting patents" />
         </div>
       )}
 
@@ -185,15 +181,13 @@ function AnalysisContent() {
       {/* Results */}
       {!loading && !error && extractions.length > 0 && (
         <div className="space-y-6 animate-slide-up">
-          <ComparisonTable extractions={extractions} />
-
           <div>
             <h2 className="font-heading font-semibold text-t-primary text-lg mb-4">
-              Paper Details
+              Patent Details
             </h2>
             <div className="space-y-4">
               {extractions.map((ext) => (
-                <PaperExtractionCard key={ext.paperId} extraction={ext} />
+                <PatentExtractionCard key={ext.patentId} extraction={ext} />
               ))}
             </div>
           </div>
@@ -203,7 +197,7 @@ function AnalysisContent() {
   );
 }
 
-export default function AnalysisPage() {
+export default function PatentAnalysisPage() {
   return (
     <div className="min-h-screen bg-background relative overflow-hidden">
       <div className="fixed inset-0 z-0 overflow-hidden pointer-events-none">
@@ -222,7 +216,7 @@ export default function AnalysisPage() {
             </div>
           }
         >
-          <AnalysisContent />
+          <PatentAnalysisContent />
         </Suspense>
       </main>
     </div>

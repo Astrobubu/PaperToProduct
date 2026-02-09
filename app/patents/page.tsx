@@ -3,8 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Header from "@/components/Header";
-import ModeSelector from "@/components/ModeSelector";
-import { Domain, DiscoveryMode } from "@/types";
+import { Domain } from "@/types";
 
 const DOMAINS: { key: Domain; label: string; icon: string }[] = [
   { key: "energy_storage", label: "Energy Storage", icon: "⚡" },
@@ -15,28 +14,27 @@ const DOMAINS: { key: Domain; label: string; icon: string }[] = [
 ];
 
 const EXAMPLE_SEARCHES: { query: string; domain: Domain }[] = [
-  { query: "solid-state electrolyte lithium battery", domain: "energy_storage" },
-  { query: "PLA starch blend packaging film", domain: "biodegradable_plastics" },
-  { query: "graphene oxide water purification membrane", domain: "advanced_materials" },
-  { query: "probiotic encapsulation shelf stability", domain: "food_technology" },
-  { query: "wearable glucose biosensor", domain: "medical_devices" },
-  { query: "sodium-ion battery cathode material", domain: "energy_storage" },
+  { query: "solid state battery electrolyte", domain: "energy_storage" },
+  { query: "biodegradable food packaging film", domain: "biodegradable_plastics" },
+  { query: "implantable glucose monitor", domain: "medical_devices" },
+  { query: "carbon nanotube composite", domain: "advanced_materials" },
+  { query: "food preservation antimicrobial coating", domain: "food_technology" },
+  { query: "lithium sulfur battery cathode", domain: "energy_storage" },
 ];
 
-export default function SearchPage() {
+export default function PatentSearchPage() {
   const [query, setQuery] = useState("");
   const [domain, setDomain] = useState<Domain>("energy_storage");
-  const [mode, setMode] = useState<DiscoveryMode>("explore");
   const router = useRouter();
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!query.trim()) return;
-    const params = new URLSearchParams({ q: query.trim(), domain, mode });
-    router.push(`/search/results?${params.toString()}`);
+    const params = new URLSearchParams({ q: query.trim(), domain });
+    router.push(`/patents/results?${params.toString()}`);
   };
 
-  const handleExample = (ex: typeof EXAMPLE_SEARCHES[0]) => {
+  const handleExample = (ex: (typeof EXAMPLE_SEARCHES)[0]) => {
     setQuery(ex.query);
     setDomain(ex.domain);
   };
@@ -57,19 +55,14 @@ export default function SearchPage() {
         {/* Hero */}
         <div className="text-center mb-10 animate-fade-in">
           <h1 className="font-heading font-bold text-3xl sm:text-4xl text-t-primary mb-3 leading-tight">
-            Discover &amp; analyze
+            Search &amp; analyze
             <br />
-            <span className="text-primary">research papers</span>
+            <span className="text-primary">US patents</span>
           </h1>
           <p className="text-t-secondary text-base max-w-md mx-auto">
-            Search for papers, pick the ones that matter, and let AI extract
-            what each one actually says.
+            Find patents from the USPTO database, select the ones that matter,
+            and let AI extract their key claims.
           </p>
-        </div>
-
-        {/* Mode selector */}
-        <div className="mb-6 animate-slide-up">
-          <ModeSelector mode={mode} onChange={setMode} />
         </div>
 
         {/* Search form */}
@@ -78,17 +71,17 @@ export default function SearchPage() {
             {/* Query input */}
             <div>
               <label
-                htmlFor="query"
+                htmlFor="patent-query"
                 className="block text-sm font-medium text-t-primary mb-1.5"
               >
-                Search for research
+                Search for patents
               </label>
               <input
-                id="query"
+                id="patent-query"
                 type="text"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                placeholder="e.g. solid-state electrolyte lithium battery"
+                placeholder="e.g. solid state battery electrolyte"
                 className="w-full bg-surface-alt rounded-xl px-4 py-3 text-t-primary placeholder-t-muted border-none focus:outline-none focus:ring-2 focus:ring-primary text-base"
               />
             </div>
@@ -127,7 +120,7 @@ export default function SearchPage() {
                   : "bg-border text-t-muted cursor-not-allowed"
               }`}
             >
-              Search papers
+              Search patents
             </button>
           </div>
         </form>
@@ -164,7 +157,7 @@ export default function SearchPage() {
 
         <div className="mt-12 text-center">
           <p className="text-t-muted text-xs">
-            Powered by GPT-5.2, Semantic Scholar &amp; OpenAlex
+            Powered by GPT-5.2 &amp; PatentsView (USPTO)
           </p>
         </div>
       </main>

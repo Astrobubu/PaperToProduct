@@ -3,12 +3,11 @@
 import { Suspense, useEffect, useState, useCallback, useRef } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Header from "@/components/Header";
-import PaperExtractionCard from "@/components/PaperExtraction";
-import ComparisonTable from "@/components/ComparisonTable";
+import ProductConceptCard from "@/components/ProductConceptCard";
 import ExtractionProgress, { ProgressItem } from "@/components/ExtractionProgress";
-import { PaperExtraction, Domain } from "@/types";
+import { ProductConcept, PaperExtraction, Domain } from "@/types";
 
-function AnalysisContent() {
+function ProductContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const ids = searchParams.get("ids") || "";
@@ -17,57 +16,68 @@ function AnalysisContent() {
 
   const paperIds = ids.split(",").filter(Boolean);
 
-  const [extractions, setExtractions] = useState<PaperExtraction[]>([]);
+  const [concept, setConcept] = useState<ProductConcept | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [progressItems, setProgressItems] = useState<ProgressItem[]>([]);
+  const [phase, setPhase] = useState<string>("Extracting papers");
   const hasRun = useRef(false);
 
   // Load paper titles from sessionStorage
   useEffect(() => {
     const stored = sessionStorage.getItem("selectedItems");
+    const conceptStep: ProgressItem = {
+      id: "__concept__",
+      title: "Generate product concept",
+      status: "waiting",
+    };
+
     if (stored) {
       try {
         const items: { id: string; title: string }[] = JSON.parse(stored);
-        setProgressItems(
-          paperIds.map((id) => ({
+        setProgressItems([
+          ...paperIds.map((id) => ({
             id,
             title: items.find((i) => i.id === id)?.title || `Paper ${id.slice(0, 8)}...`,
             status: "waiting" as const,
-          }))
-        );
+          })),
+          conceptStep,
+        ]);
       } catch {
-        setProgressItems(
-          paperIds.map((id, i) => ({
+        setProgressItems([
+          ...paperIds.map((id, i) => ({
             id,
             title: `Paper ${i + 1}`,
             status: "waiting" as const,
-          }))
-        );
+          })),
+          conceptStep,
+        ]);
       }
     } else {
-      setProgressItems(
-        paperIds.map((id, i) => ({
+      setProgressItems([
+        ...paperIds.map((id, i) => ({
           id,
           title: `Paper ${i + 1}`,
           status: "waiting" as const,
-        }))
-      );
+        })),
+        conceptStep,
+      ]);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ids]);
 
-  const runExtraction = useCallback(async () => {
+  const generateConcept = useCallback(async () => {
     if (paperIds.length === 0 || hasRun.current) return;
     hasRun.current = true;
     setLoading(true);
     setError(null);
-    const results: PaperExtraction[] = [];
+    setPhase("Extracting papers");
+    const allExtractions: PaperExtraction[] = [];
 
+    // Phase 1: Extract each paper one by one
     for (let i = 0; i < paperIds.length; i++) {
       const paperId = paperIds[i];
 
-      // Mark current as extracting
       setProgressItems((prev) =>
         prev.map((item) =>
           item.id === paperId ? { ...item, status: "extracting" } : item
@@ -90,8 +100,7 @@ function AnalysisContent() {
         const extraction = data.extractions?.[0];
 
         if (extraction) {
-          results.push(extraction);
-          // Update title from extraction result if we had a fallback
+          allExtractions.push(extraction);
           setProgressItems((prev) =>
             prev.map((item) =>
               item.id === paperId
@@ -113,23 +122,54 @@ function AnalysisContent() {
           )
         );
       }
-
-      // Update extractions as they come in
-      setExtractions([...results]);
     }
 
-    if (results.length === 0) {
-      setError("Failed to analyze papers. Please try again.");
+    // Phase 2: Generate product concept
+    setPhase("Generating concept");
+    setProgressItems((prev) =>
+      prev.map((item) =>
+        item.id === "__concept__" ? { ...item, status: "extracting" } : item
+      )
+    );
+
+    try {
+      const res = await fetch("/api/product-concept", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          paperIds,
+          domain,
+          searchQuery: query,
+          extractions: allExtractions,
+        }),
+      });
+
+      if (!res.ok) throw new Error("Concept generation failed");
+      const data = await res.json();
+      setConcept(data.concept || null);
+      setProgressItems((prev) =>
+        prev.map((item) =>
+          item.id === "__concept__" ? { ...item, status: "done" } : item
+        )
+      );
+    } catch {
+      setProgressItems((prev) =>
+        prev.map((item) =>
+          item.id === "__concept__" ? { ...item, status: "error" } : item
+        )
+      );
+      setError("Failed to generate product concept. Please try again.");
     }
+
     setLoading(false);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ids, domain, query]);
 
   useEffect(() => {
     if (progressItems.length > 0 && !hasRun.current) {
-      runExtraction();
+      generateConcept();
     }
-  }, [progressItems, runExtraction]);
+  }, [progressItems, generateConcept]);
 
   if (!ids) {
     router.push("/search");
@@ -150,30 +190,30 @@ function AnalysisContent() {
           Back to results
         </button>
         <h1 className="font-heading font-bold text-xl text-t-primary">
-          Analysis of {paperIds.length} paper{paperIds.length !== 1 ? "s" : ""}
+          Product Concept
         </h1>
         <p className="text-t-muted text-sm mt-1">
-          Extracted from paper abstracts. Only data explicitly reported by authors is shown.
+          Generated from {paperIds.length} selected paper{paperIds.length !== 1 ? "s" : ""}.
         </p>
       </div>
 
       {/* Loading with real progress */}
       {loading && progressItems.length > 0 && (
         <div className="py-8">
-          <ExtractionProgress items={progressItems} phase="Extracting papers" />
+          <ExtractionProgress items={progressItems} phase={phase} />
         </div>
       )}
 
       {/* Error */}
-      {error && (
+      {error && !loading && (
         <div className="bg-red-50 border border-red-200 rounded-xl p-4 text-sm text-red-700 mb-6">
           {error}
           <button
             onClick={() => {
               hasRun.current = false;
-              setExtractions([]);
+              setConcept(null);
               setProgressItems((prev) => prev.map((i) => ({ ...i, status: "waiting" as const })));
-              runExtraction();
+              generateConcept();
             }}
             className="block mt-2 text-red-800 font-medium underline"
           >
@@ -182,28 +222,17 @@ function AnalysisContent() {
         </div>
       )}
 
-      {/* Results */}
-      {!loading && !error && extractions.length > 0 && (
-        <div className="space-y-6 animate-slide-up">
-          <ComparisonTable extractions={extractions} />
-
-          <div>
-            <h2 className="font-heading font-semibold text-t-primary text-lg mb-4">
-              Paper Details
-            </h2>
-            <div className="space-y-4">
-              {extractions.map((ext) => (
-                <PaperExtractionCard key={ext.paperId} extraction={ext} />
-              ))}
-            </div>
-          </div>
+      {/* Result */}
+      {!loading && !error && concept && (
+        <div className="animate-slide-up">
+          <ProductConceptCard concept={concept} />
         </div>
       )}
     </>
   );
 }
 
-export default function AnalysisPage() {
+export default function ProductPage() {
   return (
     <div className="min-h-screen bg-background relative overflow-hidden">
       <div className="fixed inset-0 z-0 overflow-hidden pointer-events-none">
@@ -213,7 +242,7 @@ export default function AnalysisPage() {
 
       <Header />
 
-      <main className="relative z-10 max-w-4xl mx-auto px-4 pt-6 pb-24">
+      <main className="relative z-10 max-w-3xl mx-auto px-4 pt-6 pb-24">
         <Suspense
           fallback={
             <div className="flex flex-col items-center py-16">
@@ -222,7 +251,7 @@ export default function AnalysisPage() {
             </div>
           }
         >
-          <AnalysisContent />
+          <ProductContent />
         </Suspense>
       </main>
     </div>
