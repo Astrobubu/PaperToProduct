@@ -4,8 +4,7 @@ import LogosSection from "@/components/landing/LogosSection";
 import HowItWorksSection from "@/components/landing/HowItWorksSection";
 import FeatureSection from "@/components/landing/FeatureSection";
 import UseCasesSection from "@/components/landing/UseCasesSection";
-import RoadmapSection from "@/components/landing/RoadmapSection";
-import InvestmentSection from "@/components/landing/InvestmentSection";
+import TeamSection from "@/components/landing/TeamSection";
 import FAQSection from "@/components/landing/FAQSection";
 import PricingSection from "@/components/landing/PricingSection";
 import CTASection from "@/components/landing/CTASection";
@@ -19,8 +18,7 @@ export default function LandingPage() {
       <HowItWorksSection />
       <FeatureSection />
       <UseCasesSection />
-      <RoadmapSection />
-      <InvestmentSection />
+      <TeamSection />
       <FAQSection />
       <PricingSection />
       <CTASection />
