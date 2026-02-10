@@ -28,8 +28,7 @@ export async function searchPatentsView(
       "inventors.inventor_name_first",
       "inventors.inventor_name_last",
       "assignees.assignee_organization",
-      "cpcs.cpc_group_id",
-      "application.filing_date",
+      "cpc_current.cpc_group_id",
     ]),
     s: JSON.stringify([{ patent_num_times_cited_by_us_patents: "desc" }]),
     o: JSON.stringify({ size: limit }),
@@ -69,12 +68,11 @@ export async function searchPatentsView(
 function normalizePatent(raw: Record<string, unknown>): Patent {
   const inventors = (raw.inventors as Array<Record<string, string>>) || [];
   const assignees = (raw.assignees as Array<Record<string, string>>) || [];
-  const cpcs = (raw.cpcs as Array<Record<string, string>>) || [];
-  const application = (raw.application as Array<Record<string, string>>) || [];
+  const cpcs = (raw.cpc_current as Array<Record<string, string>>) || [];
 
   const patentId = raw.patent_id as string;
   const grantDate = (raw.patent_date as string) || null;
-  const filingDate = application[0]?.filing_date || null;
+  const filingDate: string | null = null;
   const patentType = (raw.patent_type as string) || null;
 
   const authorList: Author[] = inventors.map((inv) => ({
